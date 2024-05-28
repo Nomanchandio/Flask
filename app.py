@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request
+from flask import Flask, render_template, jsonify ,request
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 from flask import redirect
@@ -20,7 +20,7 @@ class Todo(db.Model):
         return f"{self.sno} - {self.title}"
 
 @app.route('/', methods=['GET', 'POST'])
-def hello_world():
+def homeproject():
     if request.method=='POST':
         title = request.form['title']
         desc = request.form['desc']
@@ -31,11 +31,35 @@ def hello_world():
     allTodo = Todo.query.all()
     return render_template('index.html', allTodo=allTodo)
 
-@app.route('/show')
-def products():
+
+# Create Endpoint
+@app.route('/create', methods=['POST'])
+def create_todo():
+    if request.method == 'POST':
+        data = request.get_json()
+        title = data.get('title')
+        desc = data.get('desc')
+        if title and desc:
+            todo = Todo(title=title, desc=desc)
+            db.session.add(todo)
+            db.session.commit()
+            return jsonify({"message": "Todo created successfully"}), 201
+        else:
+            return jsonify({"error": "Title and description are required"}), 400
+
+# Read Endpoint
+@app.route('/read', methods=['GET'])
+def read_todo():
     allTodo = Todo.query.all()
-    print(allTodo)
-    return 'This is products page'
+    todos = []
+    for todo in allTodo:
+        todos.append({
+            "sno": todo.sno,
+            "title": todo.title,
+            "desc": todo.desc,
+            "date_created": todo.date_created
+        })
+        return jsonify(todos)
 
 @app.route('/update/<int:sno>', methods=['GET', 'POST'])
 def update(sno):
@@ -53,6 +77,13 @@ def delete(sno):
     db.session.delete(todo)
     db.session.commit()
     return redirect("/")
+
+
+@app.route('/show')
+def products():
+    allTodo = Todo.query.all()
+    print(allTodo)
+    return 'This is products page'
 
 if __name__ == "__main__":
     app.run(debug=True, port=5001)
